@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Send, CheckCircle2, UserCheck, Clock } from "lucide-react";
+import { Send, CheckCircle2, UserCheck, Clock, ShieldCheck } from "lucide-react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
@@ -11,7 +11,8 @@ import { ErrorState } from "@/components/patterns/StateViews";
 import { useAuth } from "@/context/AuthContext";
 import { formatDateTimeWIB, dueLabel } from "@/utils/formatters";
 import api from "@/services/apiClient";
-import { COMPLAINTS } from "@/constants/testIds";
+import { COMPLAINTS, P50 } from "@/constants/testIds";
+import { ClaimCreateDialog } from "@/components/handover/WarrantyClaimDialogs";
 import { useReference } from "@/context/ReferenceContext";
 
 
@@ -22,6 +23,11 @@ export default function ComplaintDetailSheet({ complaintId, open, onOpenChange, 
   const [error, setError] = useState("");
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
+  // Fase 50A — jembatan dari keluhan pembeli ke KLAIM GARANSI rumahnya. Sebelumnya keluhan
+  // pasca-huni berhenti sebagai balasan CS: tidak pernah menjadi pekerjaan perbaikan yang
+  // bisa dilacak, dan tidak ada yang memeriksa apakah bagian itu masih bergaransi.
+  const [warranty, setWarranty] = useState(null);
+  const [claimOpen, setClaimOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!complaintId) return;
@@ -65,6 +71,13 @@ export default function ComplaintDetailSheet({ complaintId, open, onOpenChange, 
     finally { setBusy(false); }
   };
 
+  useEffect(() => {
+    if (!open || !complaintId) { setWarranty(null); return; }
+    api.get("/handover/warranty/for-complaint", { params: { complaint_id: complaintId } })
+      .then((r) => setWarranty(r.data.data || null))
+      .catch(() => setWarranty(null));   // peran tanpa izin garansi: pintu ini tidak muncul
+  }, [open, complaintId]);
+
   const sla = c ? dueLabel(c.sla_due_at) : null;
 
   return (
@@ -94,6 +107,21 @@ export default function ComplaintDetailSheet({ complaintId, open, onOpenChange, 
                 </span>
               </div>
               <p className="mt-3 rounded-lg bg-secondary p-3 text-sm">{c.message}</p>
+              {warranty ? (
+                <div className="mt-3 rounded-lg border bg-card p-3 text-[13px]">
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Garansi rumah ini
+                  </p>
+                  <p className="mt-0.5 text-muted-foreground">{warranty.detail}</p>
+                  {warranty.eligible ? (
+                    <Button size="sm" variant="secondary" className="mt-2"
+                      data-testid={P50.complaintToClaimBtn}
+                      onClick={() => setClaimOpen(true)}>
+                      <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Jadikan klaim garansi
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             <div>
@@ -139,6 +167,9 @@ export default function ComplaintDetailSheet({ complaintId, open, onOpenChange, 
             )}
           </div>
         )}
+        <ClaimCreateDialog open={claimOpen} unitId={warranty?.unit_id}
+          unitCode={warranty?.unit_code} complaintId={complaintId}
+          onOpenChange={setClaimOpen} onDone={refresh} />
       </SheetContent>
     </Sheet>
   );

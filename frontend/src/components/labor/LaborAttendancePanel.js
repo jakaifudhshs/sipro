@@ -11,6 +11,9 @@ import EmptyState from "@/components/patterns/EmptyState";
 import { ErrorState, LoadingCards } from "@/components/patterns/StateViews";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/services/apiClient";
+import * as sync from "@/services/offlineSync";
+import OfflineQueuePanel from "@/components/construction/OfflineQueuePanel";
+import { useOffline } from "@/context/OfflineContext";
 import { LABOR } from "@/constants/testIds";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -36,6 +39,7 @@ const snapOf = (map) => JSON.stringify(
  *     — sistem tidak menimpa salah satunya.
  */
 export default function LaborAttendancePanel({ projectId, onChanged }) {
+  const offline = useOffline();
   const { can } = useAuth();
   // Mencatat absensi dipaksakan router dengan `labor:create`; peran yang hanya boleh MELIHAT
   // (mis. manajer sales) tidak diberi tombol simpan yang selalu 403.
@@ -124,12 +128,23 @@ export default function LaborAttendancePanel({ projectId, onChanged }) {
     }
     setBusy(true);
     try {
-      const res = await api.post("/labor/attendance", {
-        project_id: projectId, work_date: workDate, entries: payload,
+      // Fase 50B: absensi diisi di lokasi yang sering tanpa sinyal. Bila jaringan mati,
+      // kiriman MASUK ANTREAN perangkat (ber-`client_ref`) dan terkirim sendiri nanti —
+      // tanpa risiko absensi ganda saat pengiriman diulang.
+      const out = await sync.submitOrQueue({
+        kind: "attendance_submit",
+        payload: { project_id: projectId, work_date: workDate, entries: payload },
+        title: `Absensi ${workDate} · ${payload.length} orang`,
       });
-      toast.success(res.data.message || "Absensi tersimpan.");
-      await load();
-      onChanged?.();
+      if (out.queued) {
+        toast.success(`Absensi ${workDate} tersimpan di perangkat (${payload.length} orang) — `
+          + "terkirim sendiri begitu sinyal kembali.");
+        await offline.refresh();
+      } else {
+        toast.success(out.res?.data?.message || "Absensi tersimpan.");
+        await load();
+        onChanged?.();
+      }
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Gagal menyimpan absensi.");
     } finally { setBusy(false); }
@@ -139,6 +154,7 @@ export default function LaborAttendancePanel({ projectId, onChanged }) {
 
   return (
     <div data-testid={LABOR.attendancePanel} className="space-y-3">
+      <OfflineQueuePanel kinds={["attendance_submit"]} />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h3 className="font-heading text-lg font-semibold">Absensi &amp; upah harian</h3>

@@ -71,3 +71,6 @@ export * from './buildHub';
 // Fase 49 — penutupan buku (bulan & tahun), paket laporan owner, arus kas per proyek,
 // e-Faktur & ekspor berkas, bukti potong (e-Bupot), rekap SPT Masa PPN
 export * from './p49';
+// Fase 50 — serah terima unit (BAST), masa garansi per bagian, klaim garansi pasca-huni,
+// dan antrean perangkat terpadu (absensi + buku harian + punch list + foto)
+export * from './p50';

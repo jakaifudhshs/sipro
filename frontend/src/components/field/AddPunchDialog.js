@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import PhotoUploader from "@/components/patterns/PhotoUploader";
 import ReferenceSelect from "@/components/patterns/ReferenceSelect";
-import api from "@/services/apiClient";
+import * as sync from "@/services/offlineSync";
 import { FIELD } from "@/constants/testIds";
 
 const EMPTY = { title: "", description: "", location: "", category: "finishing", severity: "medium", due_date: "", unit_id: "" };
@@ -33,14 +33,23 @@ export default function AddPunchDialog({ projectId, open, onOpenChange, onDone, 
     if (!form.title.trim()) { toast.error("Isi judul temuan."); return; }
     setBusy(true);
     try {
-      await api.post("/field/punchlist", {
-        project_id: projectId, title: form.title, description: form.description || null,
-        location: form.location || null, category: form.category, severity: form.severity,
-        unit_id: form.unit_id || null,
-        due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
+      // Fase 50B: temuan biasanya dicatat saat berjalan di lokasi. Tanpa sinyal, temuan +
+      // fotonya MASUK ANTREAN perangkat; `client_ref` menjaga agar kiriman ulang tidak
+      // melahirkan temuan kembar (dan tugas perbaikan kembar).
+      const out = await sync.submitOrQueue({
+        kind: "punch_create",
+        payload: {
+          project_id: projectId, title: form.title, description: form.description || null,
+          location: form.location || null, category: form.category, severity: form.severity,
+          unit_id: form.unit_id || null,
+          due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
+        },
         photos,
+        title: form.title.slice(0, 50),
       });
-      toast.success("Item punch ditambahkan — tugas perbaikan dibuat.");
+      toast.success(out.queued
+        ? "Temuan tersimpan di perangkat — terkirim sendiri begitu sinyal kembali."
+        : "Item punch ditambahkan — tugas perbaikan dibuat.");
       onOpenChange(false); onDone && onDone();
     } catch (e) { toast.error(e?.response?.data?.detail || "Gagal menambah item."); }
     finally { setBusy(false); }

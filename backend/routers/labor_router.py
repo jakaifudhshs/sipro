@@ -10,8 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 import labor_engine as labor
 from core_utils import parse_pagination, serialize_doc
-from db import ORG_ID
+from db import db, ORG_ID
 from models_p47 import AttendanceIn, PayrollBuildIn, PayrollDecisionIn, PayrollPayIn, WorkerIn
+import offline_intake as oi
 from rbac import assert_project_access, audit_log, require_permission
 
 router = APIRouter(prefix="/labor", tags=["labor"])
@@ -63,14 +64,39 @@ async def wage_rates(user: dict = Depends(require_permission("labor", "view"))):
 @router.post("/attendance")
 async def record_attendance(payload: AttendanceIn,
                             user: dict = Depends(require_permission("labor", "create"))):
-    """Catat absensi satu hari (banyak orang sekaligus). Orang kembar & tanggal terkunci ditolak."""
+    """Catat absensi satu hari (banyak orang sekaligus). Orang kembar & tanggal terkunci ditolak.
+
+    Fase 50B: `client_ref` membuat kiriman dari ANTREAN PERANGKAT aman diputar ulang —
+    hasil lama dikembalikan apa adanya, tanpa absensi (dan upah) kedua.
+    """
     await assert_project_access(payload.project_id, user)
+    org = _org(user)
+    intake = await oi.begin(org, "attendance_submit", payload.client_ref)
+    if intake["state"] == "replay":
+        prior = intake.get("summary") or {}
+        return {"data": serialize_doc(intake.get("doc") or {}), "replay": True,
+                "message": ("Absensi ini sudah pernah diterima server \u2014 catatan lamanya "
+                            "dipakai, tidak ada absensi kedua."),
+                "summary": prior}
+    if intake["state"] == "inflight":
+        raise HTTPException(status_code=409,
+                            detail="Kiriman absensi dengan penanda yang sama sedang diproses.")
     try:
         out = await labor.record_attendance(
             _org(user), project_id=payload.project_id, work_date=payload.work_date,
             entries=[e.model_dump() for e in payload.entries], actor=user.get("email"))
     except ValueError as e:
+        await oi.rollback(org, "attendance_submit", payload.client_ref)
         raise HTTPException(status_code=400, detail=str(e))
+    if payload.client_ref:
+        # Absensi harian tidak punya satu dokumen induk (satu baris per orang), jadi yang
+        # disimpan sebagai hasil adalah baris PERTAMA hari itu + ringkasannya.
+        first = await db.labor_attendance.find_one(
+            {"org_id": org, "project_id": payload.project_id, "work_date": payload.work_date},
+            {"_id": 0, "id": 1})
+        await oi.commit(org, "attendance_submit", payload.client_ref,
+                        collection="labor_attendance", doc_id=(first or {}).get("id"),
+                        summary={k: out.get(k) for k in ("present", "wage_total")})
     await audit_log(user, "create", "labor_attendance", payload.project_id,
                     {"work_date": payload.work_date, "entries": len(payload.entries)})
     return {"data": serialize_doc(out),

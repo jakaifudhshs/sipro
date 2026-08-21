@@ -3137,3 +3137,77 @@ agent_communication:
       * Potongan PPh fee mitra Rp 425.000 SENGAJA belum berbukti potong -> tampil sebagai "kandidat".
       * Bulan berjalan memang punya pemeriksaan yang MENAHAN penutupan (mutasi bank belum dicocokkan,
         tagihan menunggu persetujuan). Itu bahan uji hold/terobosan.
+
+# ============================================================================
+# SESI LANJUTAN (21 Agu) — pemulihan repo + penutupan sisa Fase 49
+# ============================================================================
+backend:
+  - task: "Seed Fase 49 mengikat unit demo ke lead & deal (cacat D-F)"
+    implemented: true
+    working: true
+    file: "backend/seed_phase49.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "Gate verify_data_integrity MERAH di database segar: 'unit terjual tanpa ikatan lead/deal: 1'. Sebabnya seed_phase49 membukukan unit demo (booked_by_deal) SESUDAH seed Fase 31 melakukan pengikatan, jadi dokumen unit tidak pernah punya lead_id/deal_id."
+        -working: true
+        -agent: "main"
+        -comment: "Seed sekarang memanggil build_engine.sync_unit_binding setelah membukukan unit demo. Gate verify_data_integrity PASSED; run_all_gates OVERALL PASS (38 gates)."
+
+frontend:
+  - task: "RBAC UI /tax — peran tanpa izin melihat kartu 'Akses ditolak' berbahasa manusia (US14)"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/TaxPage.js, frontend/src/constants/testIds/tax.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "Sebelumnya /tax tetap merender SELURUH deretan tab untuk sales, lalu tiap panel memuntahkan pesan teknis backend \"tidak memiliki izin 'view' pada 'tax'\" (membocorkan nama izin internal)."
+        -working: true
+        -agent: "main"
+        -comment: "TaxPage memakai can('tax','view'); bila tidak berhak, satu kartu AccessDenied (data-testid=tax-access-denied) menjelaskan siapa yang boleh membuka + jalan keluar, tab tidak dirender. Sudah dibuktikan lewat screenshot dengan akun sales."
+  - task: "Tombol Batal semua dialog Fase 49 punya data-testid (US11)"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/constants/testIds/p49.js, components/gl/ClosingChecklistPanel.js, components/gl/YearClosingPanel.js, components/tax/FakturActionDialog.js, components/tax/WithholdingActionDialog.js, components/tax/WithholdingIssueDialog.js, components/finance/ApPanel.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Uji E2E sebelumnya gagal menekan 'Batal' pada dialog bukti potong (klik tertahan overlay) karena tombolnya hanya bisa dicari lewat teks. Sekarang: p49-closing-override-cancel, p49-year-cancel, p49-faktur-action-cancel, p49-bupot-action-cancel, p49-bupot-issue-cancel, ap-pay-cancel."
+  - task: "Dialog bayar AP + Potong PPh terbukti ada datanya (US13)"
+    implemented: true
+    working: true
+    file: "frontend/src/components/finance/ApPanel.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Uji sebelumnya melaporkan 'AP panel 0 baris'. Diperiksa langsung: /finance?tab=ap menampilkan 5 baris tagihan (2 bisa dibayar: Disetujui & Dibayar sebagian), saklar Potong PPh memunculkan tarif 1,75% OTOMATIS dari setelan dan pratinjau 'Potongan PPh Rp 175.000 - Kas keluar ke vendor Rp 9.825.000'. Jadi datanya ADA; kegagalan lama adalah salah selector (ap-bill-row / ap-bill-pay-button)."
+
+agent_communication:
+    -agent: "main"
+    -message: |
+      SESI LANJUTAN — status terverifikasi ulang di container ini (database baru, seed penuh):
+      * poc/poc_49.py -> PASS (96 pemeriksaan)
+      * bash scripts/run_all_gates.sh -> OVERALL PASS (38 gates)
+      * python3 scripts/mutasi_49.py -> 24 mutasi SEMUA TERTANGKAP, baseline pulih hijau
+      Perbaikan sesi ini: (a) seed Fase 49 mengikat unit demo ke lead/deal (gate integritas data),
+      (b) /tax memberi kartu "Akses ditolak" berbahasa manusia untuk peran tanpa izin,
+      (c) semua tombol Batal dialog Fase 49 punya data-testid.
+      TESTING AGENT — CATATAN PENTING:
+      * Selector AP yang benar: baris = ap-bill-row, tombol bayar = ap-bill-pay-button,
+        batal = ap-pay-cancel, submit = ap-bill-pay-submit.
+      * Ganti peran: tekan menu profil di kanan atas (data-testid=profile-menu) lalu
+        data-testid=logout-button; setelah itu localStorage bersih dan login peran lain aman.
+      * Faktur demo pembelinya SENGAJA tanpa NPWP (masa BULAN LALU) -> ekspor ditahan; itu bahan uji.

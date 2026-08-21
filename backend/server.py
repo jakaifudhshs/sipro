@@ -69,6 +69,8 @@ from routers.gl_reports_router import router as gl_reports_router
 from routers.survey_router import router as survey_router
 from routers.tax_router import router as tax_router
 from routers.tax_compliance_router import router as tax_compliance_router
+# Fase 50A \u2014 serah terima unit (BAST), masa garansi per bagian, dan klaim garansi pasca-huni.
+from routers.handover_router import router as handover_router
 from routers.omnichannel_router import router as omnichannel_router
 from routers.broadcasts_router import router as broadcasts_router
 from routers.orgs_router import router as orgs_router
@@ -221,6 +223,13 @@ async def lifespan(app: FastAPI):
     # Seed tidak menutup bulan/tahun (keputusan manusia) dan tidak memoles daftar periksa.
     from seed_phase49 import seed_phase49
     await seed_phase49(ORG_ID)
+    # Fase 50: dua rumah demo dengan cerita berbeda \u2014 satu BERSIH & lunas tetapi belum
+    # diserahterimakan (tombol "Terbitkan BAST" bisa dicoba di layar), satu sudah
+    # diserahterimakan 400 hari lalu sehingga garansi finishing-nya habis sementara struktur
+    # masih aktif (bahan uji klaim "lewat masa garansi" vs klaim yang berjalan). Seed tidak
+    # menutup klaim & tidak memeriksa mutu (keputusan manusia). Idempoten.
+    from seed_phase50 import seed_phase50
+    await seed_phase50(ORG_ID)
     start_scheduler()
     yield
     stop_scheduler()
@@ -345,6 +354,7 @@ api.include_router(stock_router)
 # kepatuhan pajak: faktur pengganti/batal + ekspor e-Faktur, bukti potong (e-Bupot) dengan
 # pembetulan bernomor tetap, serta rekap SPT Masa PPN yang bisa direkonstruksi.
 api.include_router(tax_compliance_router)
+api.include_router(handover_router)
 app.include_router(api)
 
 app.add_middleware(

@@ -37,6 +37,12 @@ GROUPS_P39: dict = {
         "label": "Status Pembangunan", "strict": True, "options": [
             _o("not_started", "Belum dibangun"), _o("scheduled", "Sudah dijadwalkan"),
             _o("in_progress", "Sedang dibangun"), _o("qc_hold", "Tertahan mutu (QC)"),
+            # Fase 50A: nilai ini SUDAH LAMA ditulis oleh finalisasi inspeksi kategori
+            # "handover" (`inspection_router.finalize`) tetapi tidak pernah terdaftar di
+            # kamus data. Akibatnya pill status menampilkan kode mentah dan gate integritas
+            # data berhak menyebutnya "status tak dikenal". Sekarang nilainya sah dan
+            # berlabel manusia — inilah keadaan yang dibaca daftar periksa serah terima.
+            _o("ready_handover", "Siap serah terima"),
             _o("done", "Sudah dibangun"), _o("on_hold", "Dihentikan sementara"),
         ],
     },

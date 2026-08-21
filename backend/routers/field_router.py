@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from db import db, ORG_ID
 from core_utils import new_id, now_iso, serialize_doc, due_in
+import offline_intake as oi
 from rbac import require_permission, assert_project_access, project_query
 from engine import auto_create_task, add_activity, emit, dispatch_pending
 
@@ -35,6 +36,26 @@ def _photo_list(payload) -> list:
     if payload.photos:
         return list(payload.photos)
     return [payload.photo] if payload.photo else []
+
+
+async def _intake(org: str, kind: str, client_ref: str):
+    """Penjaga antrean perangkat (Fase 50B).
+
+    Kembalikan JAWABAN SIAP PAKAI bila kiriman ini sudah pernah diterima (`replay`), atau
+    None bila memang kiriman baru. Dipakai buku harian & punch list karena keduanya
+    dikerjakan di lokasi yang sering tanpa sinyal: tanpa penjaga ini, satu kiriman yang
+    terputus di tengah jalan berubah menjadi DUA catatan begitu pemakai menekan ulang.
+    """
+    if not client_ref:
+        return None
+    intake = await oi.begin(org, kind, client_ref)
+    if intake["state"] == "replay":
+        return {"data": serialize_doc(intake.get("doc") or {}), "replay": True,
+                "message": "Kiriman ini sudah pernah diterima server \u2014 catatan lamanya dipakai."}
+    if intake["state"] == "inflight":
+        raise HTTPException(status_code=409,
+                            detail="Kiriman dengan penanda yang sama sedang diproses.")
+    return None
 
 
 async def _project_map(user: dict) -> dict:
@@ -68,6 +89,9 @@ async def create_diary(payload: DiaryCreateP28,
     _check_photo(payload.photo)
     proj = await assert_project_access(payload.project_id, user)
     org = user.get("org_id", ORG_ID)
+    replay = await _intake(org, "field_diary", payload.client_ref)
+    if replay is not None:
+        return replay
     ts = now_iso()
     photos = _photo_list(payload)
     doc = {
@@ -81,6 +105,8 @@ async def create_diary(payload: DiaryCreateP28,
     }
     await db.site_diaries.insert_one(dict(doc))
     doc.pop("_id", None)
+    await oi.commit(org, "field_diary", payload.client_ref,
+                    collection="site_diaries", doc_id=doc["id"])
     await add_activity(entity_type="project", entity_id=payload.project_id, type="system",
                        body=f"Buku harian {str(doc['log_date'])[:10]}: {payload.work_description[:60]}",
                        actor=user.get("email"), org_id=org)
@@ -117,6 +143,9 @@ async def create_punch(payload: PunchCreateP28,
     _check_photo(payload.photo)
     proj = await assert_project_access(payload.project_id, user)
     org = user.get("org_id", ORG_ID)
+    replay = await _intake(org, "punch_create", payload.client_ref)
+    if replay is not None:
+        return replay
     ts = now_iso()
     photos = _photo_list(payload)
     doc = {
@@ -130,6 +159,8 @@ async def create_punch(payload: PunchCreateP28,
     }
     await db.punch_items.insert_one(dict(doc))
     doc.pop("_id", None)
+    await oi.commit(org, "punch_create", payload.client_ref,
+                    collection="punch_items", doc_id=doc["id"])
     await auto_create_task(
         source_event=f"punch:{doc['id']}",
         title=f"Punch: {payload.title} — {proj.get('code') or proj.get('name')}",
@@ -187,6 +218,9 @@ async def punch_status(pid: str, payload: PunchStatusP28,
     if payload.status not in PUNCH_STATUS:
         raise HTTPException(status_code=400, detail="Status tidak valid.")
     doc = await _get_punch(pid, user)
+    replay = await _intake(doc["org_id"], "punch_status", payload.client_ref)
+    if replay is not None:
+        return replay
     ts = now_iso()
     setter = {"status": payload.status, "updated_at": ts}
     if payload.status == "closed":
@@ -206,4 +240,7 @@ async def punch_status(pid: str, payload: PunchStatusP28,
             entity_id=doc.get("unit_id") or doc["project_id"], type="system",
             body=f"Punch '{doc.get('title')}' → {payload.status}: {detail}",
             actor=user.get("email"), org_id=doc["org_id"])
+    await oi.commit(doc["org_id"], "punch_status", payload.client_ref,
+                    collection="punch_items", doc_id=pid,
+                    summary={"status": payload.status})
     return {"data": serialize_doc(await db.punch_items.find_one({"id": pid}, {"_id": 0}))}

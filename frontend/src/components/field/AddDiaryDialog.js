@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import PhotoUploader from "@/components/patterns/PhotoUploader";
 import ReferenceSelect from "@/components/patterns/ReferenceSelect";
-import api from "@/services/apiClient";
+import * as sync from "@/services/offlineSync";
 import { FIELD } from "@/constants/testIds";
 
 const EMPTY = { log_date: "", weather: "", workforce: "", work_description: "", materials: "", equipment: "", obstacles: "" };
@@ -25,17 +25,28 @@ export default function AddDiaryDialog({ projectId, open, onOpenChange, onDone }
     if (!form.work_description.trim()) { toast.error("Isi uraian pekerjaan."); return; }
     setBusy(true);
     try {
-      await api.post("/field/diary", {
-        project_id: projectId,
-        log_date: form.log_date ? new Date(form.log_date).toISOString() : null,
-        weather: form.weather || null, workforce: Number(form.workforce) || 0,
-        work_description: form.work_description, materials: form.materials || null,
-        equipment: form.equipment || null, obstacles: form.obstacles || null,
+      // Fase 50B: buku harian ditulis di lokasi. Bila sinyal mati (atau fotonya masih
+      // tersimpan di perangkat), catatan MASUK ANTREAN dan terkirim sendiri nanti.
+      const out = await sync.submitOrQueue({
+        kind: "field_diary",
+        payload: {
+          project_id: projectId,
+          log_date: form.log_date ? new Date(form.log_date).toISOString() : null,
+          weather: form.weather || null, workforce: Number(form.workforce) || 0,
+          work_description: form.work_description, materials: form.materials || null,
+          equipment: form.equipment || null, obstacles: form.obstacles || null,
+        },
         photos,
+        title: `Buku harian ${(form.log_date || "hari ini")} · ${form.work_description.slice(0, 40)}`,
       });
-      toast.success(photos.length
-        ? `Buku harian tersimpan dengan ${photos.length} foto — tampil juga di kavling terkait.`
-        : "Buku harian tersimpan.");
+      if (out.queued) {
+        toast.success("Buku harian tersimpan di perangkat — terkirim sendiri begitu sinyal "
+          + "kembali (termasuk fotonya).");
+      } else {
+        toast.success(photos.length
+          ? `Buku harian tersimpan dengan ${photos.length} foto — tampil juga di kavling terkait.`
+          : "Buku harian tersimpan.");
+      }
       onOpenChange(false); onDone && onDone();
     } catch (e) { toast.error(e?.response?.data?.detail || "Gagal menyimpan catatan."); }
     finally { setBusy(false); }

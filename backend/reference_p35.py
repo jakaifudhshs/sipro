@@ -31,6 +31,17 @@ GROUPS_P35: dict = {
         "label": "Jenis Antrean Perangkat", "strict": True, "options": [
             _o("build_submit", "Ajukan hasil kerja"),
             _o("build_start", "Mulai dikerjakan"),
+            # Fase 50B: antrean yang sama sekarang membawa pekerjaan lapangan lain yang
+            # paling sering dikerjakan tanpa sinyal. Sebelumnya ketiga hal ini hanya bisa
+            # dikirim saat online — jadi absensi seharian bisa hilang atau (kalau ditekan
+            # ulang) masuk dua kali menjadi upah ganda.
+            _o("attendance_submit", "Absensi tenaga kerja"),
+            _o("field_diary", "Buku harian proyek"),
+            _o("punch_create", "Temuan punch list baru"),
+            _o("punch_status", "Ubah status temuan punch list"),
+            _o("warranty_claim", "Klaim garansi"),
+            _o("warranty_fix", "Bukti perbaikan garansi"),
+            _o("handover_issue", "Berita acara serah terima"),
         ],
     },
 }

@@ -5,6 +5,7 @@ import EmptyState from "@/components/patterns/EmptyState";
 import ProjectSelect from "@/components/construction/ProjectSelect";
 import SiteDiaryPanel from "@/components/field/SiteDiaryPanel";
 import PunchListPanel from "@/components/field/PunchListPanel";
+import OfflineQueuePanel from "@/components/construction/OfflineQueuePanel";
 import { FIELD } from "@/constants/testIds";
 
 export default function FieldPage() {
@@ -28,6 +29,12 @@ export default function FieldPage() {
             <TabsTrigger data-testid={FIELD.tabDiary} value="diary">Buku Harian</TabsTrigger>
             <TabsTrigger data-testid={FIELD.tabPunch} value="punch">Punch List</TabsTrigger>
           </TabsList>
+          {/* Fase 50B: antrean perangkat untuk buku harian & punch list tampil di halaman
+              tempat keduanya dikerjakan — bukan hanya di Papan Mandor. Pekerjaan yang
+              belum sampai server harus TERLIHAT di tempat pemakai menuliskannya. */}
+          <div className="mt-3">
+            <OfflineQueuePanel kinds={["field_diary", "punch_create", "punch_status"]} />
+          </div>
           <TabsContent value="diary" className="mt-4">
             <SiteDiaryPanel projectId={projectId} />
           </TabsContent>

@@ -188,6 +188,10 @@ class AttendanceIn(BaseModel):
     project_id: str
     work_date: str = Field(min_length=10, max_length=10)
     entries: List[AttendanceEntryIn] = Field(min_length=1)
+    # Fase 50B — penanda antrean perangkat: absensi dikerjakan di lokasi yang sering tanpa
+    # sinyal. Tanpa penanda ini, mandor yang menekan "kirim" dua kali membuat absensi ganda
+    # dan upah ganda; yang tidak menekan ulang kehilangan absensi seharian tanpa jejak.
+    client_ref: Optional[str] = Field(default=None, max_length=120)
 
 
 class PayrollBuildIn(BaseModel):

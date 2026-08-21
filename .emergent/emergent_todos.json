@@ -1,50 +1,50 @@
 [
   {
-    "content": "Restore repo to /app, install deps, seed DB, services running",
+    "content": "Restore repo, deps, seed, services running",
     "status": "completed"
   },
   {
-    "content": "Baseline verify: poc_49.py PASS + run_all_gates.sh (38 gates) OVERALL PASS",
+    "content": "Baseline: poc_49 PASS + 38 gates PASS + mutasi_49 24/24",
+    "status": "completed"
+  },
+  {
+    "content": "Fase 49 sisa: fix gate data-integrity, US11/US13/US14 + E2E 15/15 PASS",
+    "status": "completed"
+  },
+  {
+    "content": "Fase 50A POC: poc/poc_50.py PASS (81 pemeriksaan)",
+    "status": "completed"
+  },
+  {
+    "content": "Fase 50A backend: reference_p50, models_p50, handover_engine, warranty_engine, router, RBAC, settings, indexes, seed_phase50",
+    "status": "completed"
+  },
+  {
+    "content": "Fase 50B backend: offline_intake client_ref (absensi, diary, punch create/status)",
+    "status": "completed"
+  },
+  {
+    "content": "Fase 50A UI: tab unit Serah Terima & Garansi, papan Garansi & Klaim, pintu komplain CS, portal pembeli",
+    "status": "completed"
+  },
+  {
+    "content": "Fase 50B UI: antrean perangkat terpadu (offlineSync + panel di Field/Absensi/unit)",
+    "status": "completed"
+  },
+  {
+    "content": "Gate 39 verify_handover_warranty.py + gate 40 verify_offline_queue.py + registrasi 40 gates",
     "status": "in_progress"
   },
   {
-    "content": "Fase 49 sisa: seed AP bills Disetujui/Sebagian untuk jalur Potong PPh (US13)",
+    "content": "scripts/mutasi_50.py (semua mutasi TERTANGKAP)",
     "status": "pending"
   },
   {
-    "content": "Fase 49 sisa: tombol Keluar (logout) di header + bersihkan sesi (US14 RBAC sales /tax)",
+    "content": "Docs: docs/v2/44 & 45 spec, CODEBASE_MAP, test_result, memory/test_credentials, plan.md",
     "status": "pending"
   },
   {
-    "content": "Fase 49 sisa: perbaiki overlay dialog bukti potong (US11) + audit tombol Batal semua dialog p49",
-    "status": "pending"
-  },
-  {
-    "content": "E2E ulang Fase 49 (US11/US13/US14 + regresi) via testing_agent_v3",
-    "status": "pending"
-  },
-  {
-    "content": "Fase 50A POC: BAST unit + garansi + klaim garansi (poc/poc_50.py)",
-    "status": "pending"
-  },
-  {
-    "content": "Fase 50A backend: handover engine, models, router, RBAC, seed",
-    "status": "pending"
-  },
-  {
-    "content": "Fase 50A UI: halaman/tab serah terima unit + garansi + klaim",
-    "status": "pending"
-  },
-  {
-    "content": "Fase 50B POC + implementasi PWA offline terpadu (absensi+progres+foto, satu antrean sinkron)",
-    "status": "pending"
-  },
-  {
-    "content": "Gate baru 39/40 + mutasi_50.py + docs + plan.md update",
-    "status": "pending"
-  },
-  {
-    "content": "E2E multi-peran Fase 50 via testing_agent_v3",
+    "content": "Jalankan poc_50 + 40 gates hijau + E2E multi-peran Fase 50 via testing_agent_v3",
     "status": "pending"
   }
 ]

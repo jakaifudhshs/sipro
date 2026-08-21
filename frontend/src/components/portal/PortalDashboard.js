@@ -1,13 +1,14 @@
 import React, { useState } from "react";
-import { LayoutDashboard, Wallet, HardHat, FileText, MessageSquareWarning, LogOut, Building2, Map } from "lucide-react";
+import { LayoutDashboard, Wallet, HardHat, FileText, MessageSquareWarning, LogOut, Building2, Map, ShieldCheck } from "lucide-react";
 import { usePortalAuth } from "@/context/PortalAuthContext";
-import { PORTAL } from "@/constants/testIds";
+import { PORTAL, P50 } from "@/constants/testIds";
 import OverviewPanel from "@/components/portal/panels/OverviewPanel";
 import PaymentsPanel from "@/components/portal/panels/PaymentsPanel";
 import ProgressPanel from "@/components/portal/panels/ProgressPanel";
 import PlanPanel from "@/components/portal/panels/PlanPanel";
 import DocumentsPanel from "@/components/portal/panels/DocumentsPanel";
 import ComplaintsPanel from "@/components/portal/panels/ComplaintsPanel";
+import WarrantyPanel from "@/components/portal/panels/WarrantyPanel";
 
 const TABS = [
   { id: "overview", label: "Ringkasan", icon: LayoutDashboard, tid: PORTAL.tabOverview, Comp: OverviewPanel },
@@ -16,6 +17,8 @@ const TABS = [
   { id: "plan", label: "Peta Kavling", icon: Map, tid: PORTAL.tabPlan, Comp: PlanPanel },
   { id: "documents", label: "Dokumen", icon: FileText, tid: PORTAL.tabDocuments, Comp: DocumentsPanel },
   { id: "complaints", label: "Komplain", icon: MessageSquareWarning, tid: PORTAL.tabComplaints, Comp: ComplaintsPanel },
+  // Fase 50A — pembeli melihat masa garansi rumahnya & mengajukan klaim sendiri.
+  { id: "warranty", label: "Garansi", icon: ShieldCheck, tid: P50.portalTabWarranty, Comp: WarrantyPanel },
 ];
 
 export default function PortalDashboard() {

@@ -16,6 +16,7 @@ import StatusPill from "@/components/patterns/StatusPill";
 import { formatDateWIB, formatDateTimeWIB } from "@/utils/formatters";
 import { toPhotoList } from "@/utils/photoSrc";
 import api from "@/services/apiClient";
+import * as sync from "@/services/offlineSync";
 import { FIELD } from "@/constants/testIds";
 import { useReference } from "@/context/ReferenceContext";
 
@@ -71,11 +72,19 @@ export default function PunchDetailSheet({ punch, open, canManage, onOpenChange,
   const save = async () => {
     setBusy(true);
     try {
-      await api.post(`/field/punchlist/${punch.id}/status`, {
-        status, photos: fixPhotos, note: note || null,
+      // Fase 50B: perubahan status + foto "sesudah" juga bisa terjadi tanpa sinyal.
+      // `client_ref` menjaga agar kiriman ulang TIDAK melampirkan bukti dua kali.
+      const out = await sync.submitOrQueue({
+        kind: "punch_status",
+        endpoint: `/field/punchlist/${punch.id}/status`,
+        payload: { status, note: note || null },
+        photos: fixPhotos,
+        title: `${punch.title?.slice(0, 40)} → ${labelOf("punch_status", status)}`,
       });
-      toast.success(`Status → ${labelOf("punch_status", status)}.`
-        + (fixPhotos.length ? ` ${fixPhotos.length} foto bukti perbaikan dilampirkan.` : ""));
+      toast.success(out.queued
+        ? "Perubahan tersimpan di perangkat — terkirim sendiri begitu sinyal kembali."
+        : `Status → ${labelOf("punch_status", status)}.`
+          + (fixPhotos.length ? ` ${fixPhotos.length} foto bukti perbaikan dilampirkan.` : ""));
       onOpenChange(false); onChanged && onChanged();
     } catch (e) { toast.error(e?.response?.data?.detail || "Gagal mengubah status."); }
     finally { setBusy(false); }

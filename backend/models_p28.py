@@ -16,6 +16,12 @@ MAX_PHOTOS = 6
 
 class _PhotosMixin(BaseModel):
     photos: Optional[List[str]] = None
+    # Fase 50B — penanda antrean perangkat. Kiriman ULANG dengan penanda yang sama
+    # memutar ulang hasil lama (bukan membuat catatan kedua): buku harian & temuan punch
+    # adalah dua hal yang paling sering dikerjakan di lokasi tanpa sinyal, jadi tanpa
+    # penanda ini satu-satunya pilihan pemakai adalah "tekan ulang lalu dobel" atau
+    # "jangan tekan lalu hilang".
+    client_ref: Optional[str] = Field(default=None, max_length=120)
 
     @field_validator("photos")
     @classmethod

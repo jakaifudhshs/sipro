@@ -16,12 +16,13 @@ import EntityHeader from "@/components/patterns/EntityHeader";
 import StatusPill from "@/components/patterns/StatusPill";
 import EmptyState from "@/components/patterns/EmptyState";
 import UnitBuildTab from "@/components/build/UnitBuildTab";
+import UnitHandoverTab from "@/components/handover/UnitHandoverTab";
 import PermitCoveragePanel from "@/components/permits/PermitCoveragePanel";
 import { LoadingCards, ErrorState } from "@/components/patterns/StateViews";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/services/apiClient";
 import { formatDateTimeWIB, formatIDR } from "@/utils/formatters";
-import { MASTERPLAN } from "@/constants/testIds";
+import { MASTERPLAN, P50 } from "@/constants/testIds";
 
 function Row({ label, value }) {
   return (
@@ -125,6 +126,11 @@ export default function UnitDetailPage() {
           <TabsTrigger data-testid={MASTERPLAN.unitTabSales} value="sales">Penjualan</TabsTrigger>
           <TabsTrigger data-testid={MASTERPLAN.unitTabBuild} value="build">Pembangunan</TabsTrigger>
           <TabsTrigger data-testid={MASTERPLAN.unitTabDocs} value="docs">Dokumen & Izin</TabsTrigger>
+          {/* Fase 50A: serah terima & garansi menempel pada RUMAH, jadi pintunya di sini —
+              bukan menu sidebar baru. */}
+          <TabsTrigger data-testid={P50.unitTabHandover} value="handover">
+            Serah Terima & Garansi
+          </TabsTrigger>
           <TabsTrigger data-testid={MASTERPLAN.unitTabHistory} value="history">Riwayat</TabsTrigger>
         </TabsList>
 
@@ -240,6 +246,10 @@ export default function UnitDetailPage() {
                 description="Dokumen syarat diunggah dari profil lead/customer terkait." />
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="handover" className="space-y-4">
+          <UnitHandoverTab unitId={id} unitCode={u.code} />
         </TabsContent>
 
         <TabsContent value="history">

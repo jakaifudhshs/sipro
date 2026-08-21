@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
+  ShieldCheck,
   ClipboardCheck, FileBarChart2, FileStack, HardHat, ListChecks, Smartphone, Waypoints,
 } from "lucide-react";
 
@@ -16,10 +17,11 @@ import InspectionsPanel from "@/components/construction/InspectionsPanel";
 import ProjectPhasesPanel from "@/components/construction/ProjectPhasesPanel";
 import ProjectSelect from "@/components/construction/ProjectSelect";
 import WeeklyReportPanel from "@/components/construction/WeeklyReportPanel";
+import WarrantyBoardPanel from "@/components/handover/WarrantyBoardPanel";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/services/apiClient";
 import { selfPath } from "@/utils/hubNav";
-import { BUILD, CONSTRUCTION } from "@/constants/testIds";
+import { BUILD, CONSTRUCTION, P50 } from "@/constants/testIds";
 
 /**
  * PROGRES & MUTU KONSTRUKSI.
@@ -146,7 +148,16 @@ export default function ConstructionPage() {
             <TabsTrigger data-testid={BUILD.tabTemplates} value="templates">
               <FileStack className="mr-1.5 h-3.5 w-3.5" /> Template Jadwal
             </TabsTrigger>
+            {/* Fase 50A: pekerjaan garansi dikerjakan orang yang sama dengan pekerjaan
+                pembangunan, jadi papannya menjadi TAB di sini (tanpa pintu sidebar baru). */}
+            <TabsTrigger data-testid={P50.boardTab} value="warranty">
+              <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Garansi & Klaim
+            </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="warranty">
+            <WarrantyBoardPanel projectId={projectId} />
+          </TabsContent>
 
           <TabsContent value="board">
             <ForemanBoard projectId={projectId} focusItemId={focusItem}

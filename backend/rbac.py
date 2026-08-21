@@ -61,6 +61,11 @@ ROLE_GRANTS = {
         # pencocokan bank (membalik pembukuan) dan menyetujui/membayar upah harian.
         "bank": ["view_all", "create", "update", "approve"],
         "labor": ["view_all", "approve"],
+        # Fase 50A: MENEROBOS daftar periksa serah terima & MEMBATALKAN BAST yang salah
+        # terbit adalah keputusan manajerial (kunci diserahkan walau ada yang belum beres,
+        # atau dokumen resmi ditarik kembali). Tim proyek/keuangan tetap yang menerbitkan.
+        "handover": ["view_all", "create", "override", "cancel"],
+        "warranty": ["view_all"],
     },
     "dm_supervisor": {
         "automation_rules": ["manage"], "wa_templates": ["manage"], "channels": ["manage"],
@@ -323,6 +328,30 @@ DEFAULT_PERMISSIONS = {
     # tercakup `manage` milik finance; peran lain tetap 403 karena berkas pajak adalah
     # pernyataan resmi perusahaan.
     "tax": {"finance": ["manage"]},
+    # ---------------- Fase 50A: serah terima unit & garansi pasca-huni ----------------
+    # Pemisahan tugas yang SENGAJA: yang menerbitkan BAST (tim proyek & keuangan) bukan yang
+    # boleh MENEROBOS daftar periksanya. Terobosan berarti kunci diserahkan walau temuan
+    # masih terbuka / pembayaran belum beres — itu keputusan manajerial, jadi berhenti di
+    # Manajer Keuangan & Direksi (lihat ROLE_GRANTS["finance_manager"]["handover"]).
+    "handover": {
+        "finance": ["view_all", "create"],
+        "project_manager": ["view_all", "create"],
+        "site_engineer": ["view_all"],
+        "sales_manager": ["view_all"],
+        "marketing_admin": ["view_all"],
+        "sales": ["view_all"],
+    },
+    # Klaim garansi: CS/sales MENGAJUKAN (dari komplain pembeli), tim proyek MENGERJAKAN,
+    # dan pemeriksaan mutu (`approve`) dipegang Manajer Proyek — supaya yang mengerjakan
+    # perbaikan tidak bisa menyatakan pekerjaannya sendiri lulus.
+    "warranty": {
+        "finance": ["view_all"],
+        "project_manager": ["view_all", "create", "update", "approve"],
+        "site_engineer": ["view_all", "create", "update"],
+        "sales_manager": ["view_all", "create"],
+        "marketing_admin": ["view_all", "create"],
+        "sales": ["view_all", "create"],
+    },
     # ---------------- Fase 27 ----------------
     # Kas Bon: SEMUA peran boleh mengajukan (view_own), finance/owner MENYETUJUI & MENCAIRKAN.
     "petty_cash": {

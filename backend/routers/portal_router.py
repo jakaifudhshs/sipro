@@ -22,7 +22,10 @@ from engine import build_s_curve, auto_create_task, create_notification
 from pdf_utils import build_document_pdf
 from portal_security import create_portal_token, get_portal_user
 from notifications import send_whatsapp, gen_otp
+import handover_engine as he
+import warranty_engine as we
 from models import PortalOtpRequest, PortalOtpVerify, ComplaintCreate
+from models_p50 import PortalWarrantyClaim
 from models_p47 import PaymentProofIn
 
 router = APIRouter(prefix="/portal", tags=["portal"])
@@ -451,7 +454,12 @@ async def portal_reference(_pu: dict = Depends(get_portal_user)):
     dulu akibatnya daftar kategori komplain di-hardcode di frontend portal dan nilainya
     menyimpang dari SSOT (mis. \"umum\" vs kanonik \"lainnya\").
     """
-    allowed = ("complaint_category", "complaint_status", "priority")
+    allowed = ("complaint_category", "complaint_status", "priority",
+               # Fase 50A: portal pembeli menampilkan masa garansi & status klaim; labelnya
+               # WAJIB dari kamus data yang sama dengan layar staf, kalau tidak pembeli dan
+               # staf membaca dua versi kata untuk keadaan yang sama.
+               "warranty_category", "warranty_state", "warranty_claim_state",
+               "warranty_claim_source", "warranty_reject_reason")
     reg = ref.public_registry()
     return {"data": {k: reg[k] for k in allowed if k in reg}}
 
@@ -471,17 +479,22 @@ async def create_complaint(payload: ComplaintCreate, pu: dict = Depends(get_port
     cust = await _customer(pu)
     deals = await _deals(pu, cust)
     deal = next((d for d in deals if d["id"] == payload.deal_id), deals[0] if deals else None)
-    unit_code = None
+    unit_code, unit_id = None, None
     if deal:
         unit = await db.units.find_one({"id": deal.get("unit_id")}, {"_id": 0}) or {}
         unit_code = unit.get("code")
+        # Fase 50A: komplain dulu hanya menyimpan KODE unit, bukan id-nya. Akibatnya tidak
+        # ada satu pun jalan otomatis dari keluhan pembeli ke rumahnya (dan ke masa
+        # garansinya) — CS harus mencari sendiri kavlingnya. Sekarang id-nya ikut disimpan.
+        unit_id = unit.get("id") or deal.get("unit_id")
     ts = now_iso()
     cid = new_id()
     sla = due_in(hours=48)
     doc = {
         "id": cid, "org_id": org, "customer_id": pu.get("customer_id"),
         "customer_name": pu.get("name"), "deal_id": deal["id"] if deal else None,
-        "unit_code": unit_code, "category": payload.category or "umum",
+        "unit_code": unit_code, "unit_id": unit_id,
+        "category": payload.category or "umum",
         "subject": payload.subject, "message": payload.message,
         "status": "open", "priority": payload.priority or "medium",
         "assigned_to": (deal or {}).get("assigned_to"),
@@ -503,3 +516,82 @@ async def create_complaint(payload: ComplaintCreate, pu: dict = Depends(get_port
                         f"Terima kasih. Komplain Anda '{payload.subject}' telah kami terima dan akan ditindaklanjuti (SLA 2x24 jam).")
     doc.pop("_id", None)
     return {"data": serialize_doc(doc)}
+
+# ----------------------------- garansi & klaim (Fase 50A) -----------------------------
+async def _my_units(pu: dict) -> list:
+    """Rumah milik pembeli ini (dari deal-nya) — dipakai layar garansi portal."""
+    cust = await _customer(pu)
+    deals = await _deals(pu, cust)
+    out = []
+    for d in deals:
+        if not d.get("unit_id"):
+            continue
+        unit = await db.units.find_one({"id": d["unit_id"], "org_id": pu.get("org_id", ORG_ID)},
+                                       {"_id": 0, "id": 1, "code": 1, "type": 1,
+                                        "project_id": 1, "status": 1})
+        if unit:
+            out.append({**unit, "deal_id": d["id"]})
+    return out
+
+
+@router.get("/warranty")
+async def portal_warranty(pu: dict = Depends(get_portal_user)):
+    """Masa garansi rumah saya + riwayat klaim.
+
+    Kenapa ada di portal: pembeli adalah orang yang PALING butuh tahu "bagian ini masih
+    garansi sampai kapan". Sebelum Fase 50 jawabannya hanya ada di kepala staf, jadi setiap
+    keluhan berubah menjadi perdebatan tanpa dasar.
+    """
+    org = pu.get("org_id", ORG_ID)
+    units = await _my_units(pu)
+    rows = []
+    for u in units:
+        st_ = await he.warranty_status(org, u["id"])
+        rows.append({"unit": {"id": u["id"], "code": u.get("code"), "type": u.get("type")},
+                     "handover": st_.get("handover"), "warranty": st_.get("rows"),
+                     "claims": st_.get("claims"), "missing": st_.get("missing"),
+                     "detail": st_.get("detail")})
+    return {"data": serialize_doc(rows), "total": len(rows),
+            "detail": ("Belum ada rumah yang terdaftar atas nama Anda — belum ada data."
+                       if not rows else
+                       f"{len(rows)} rumah; masa garansi dihitung dari tanggal serah terima.")}
+
+
+@router.post("/warranty/claims")
+async def portal_create_claim(payload: PortalWarrantyClaim,
+                              pu: dict = Depends(get_portal_user)):
+    """Ajukan klaim garansi langsung dari portal pembeli.
+
+    Klaim yang masa garansinya sudah lewat TIDAK dibuang diam-diam: klaimnya tetap
+    tercatat berstatus DITOLAK beserta tanggal habisnya, supaya pembeli punya jawaban
+    tertulis yang bisa diperiksa ulang.
+    """
+    org = pu.get("org_id", ORG_ID)
+    units = {u["id"] for u in await _my_units(pu)}
+    if payload.unit_id not in units:
+        raise HTTPException(status_code=403,
+                            detail="Rumah ini tidak terdaftar atas nama Anda.")
+    try:
+        doc = await we.create_claim(
+            org, unit_id=payload.unit_id, category=payload.category, title=payload.title,
+            description=payload.description, source="portal_pembeli",
+            photo_file_ids=payload.photo_file_ids, actor=pu.get("phone") or pu.get("name"))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    await send_whatsapp(pu.get("phone"),
+                        (f"Klaim garansi {doc['number']} kami terima: {doc['title']}."
+                         if doc["state"] != "ditolak" else
+                         f"Klaim garansi {doc['number']} tidak dapat kami proses: "
+                         f"{doc.get('reject_detail')}"))
+    return {"data": serialize_doc(doc),
+            "message": (f"Klaim {doc['number']} diterima dan akan ditindaklanjuti tim proyek."
+                        if doc["state"] != "ditolak" else
+                        f"Klaim {doc['number']} tercatat namun DITOLAK: {doc.get('reject_detail')}")}
+
+
+@router.get("/warranty/claims")
+async def portal_claims(pu: dict = Depends(get_portal_user)):
+    org = pu.get("org_id", ORG_ID)
+    out = await we.list_claims(org, customer_id=pu.get("customer_id"))
+    return {"data": serialize_doc(out["rows"]), "total": out["total"],
+            "detail": out["detail"]}

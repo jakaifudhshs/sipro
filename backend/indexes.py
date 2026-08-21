@@ -121,6 +121,14 @@ UNIQUE_INDEXES = [
     # Satu nama target per proyek+cakupan: mencegah "Target 2026" kembar yang membuat dua
     # rencana resmi berbeda untuk proyek yang sama.
     ("project_targets", [("org_id", 1), ("project_id", 1), ("name", 1)], "uq_project_target_name"),
+    # ---------------- Fase 50: serah terima, garansi & antrean perangkat ----------------
+    # Satu nomor BAST hanya boleh dipakai satu dokumen (nomor dokumen resmi).
+    ("unit_handovers", [("org_id", 1), ("number", 1)], "uq_handover_number"),
+    ("warranty_claims", [("org_id", 1), ("number", 1)], "uq_warranty_claim_number"),
+    # Kunci idempotensi antrean perangkat: satu `client_ref` per jenis kiriman hanya boleh
+    # menghasilkan SATU dokumen. Tanpa index ini, dua tab yang mengirim bersamaan sama-sama
+    # lolos pemeriksaan aplikasi dan absensi ganda menjadi upah ganda.
+    ("offline_intake", [("org_id", 1), ("kind", 1), ("client_ref", 1)], "uq_offline_intake_ref"),
 ]
 
 # Natural key yang boleh kosong (partial index: hanya baris yang punya nilai dijaga).
@@ -147,6 +155,8 @@ PARTIAL = {
     "uq_asset_code": "code",
     "uq_loan_no": "no",
     "uq_marketing_fee_no": "no",
+    "uq_handover_number": "number",
+    "uq_warranty_claim_number": "number",
 }
 
 

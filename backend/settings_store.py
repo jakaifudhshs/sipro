@@ -303,6 +303,38 @@ DEFAULTS: dict = {d["key"]: d for d in [
        "pemotongan bila kondisinya berbeda.", minimum=0, maximum=100),
     _d("tax.bupot_series", "01", "text", "pajak", "Kode seri bukti potong (2 digit)",
        "Dua digit kode seri pada nomor bukti potong 10 digit (PER-24/PJ/2021)."),
+    # ============ Fase 50A: serah terima & garansi ============
+    # Kenapa per BAGIAN, bukan satu angka: `retention.months` lama menyebut "masa retensi /
+    # garansi bangunan" sebagai SATU nilai untuk semua pekerjaan, padahal struktur bertahun
+    # dan finishing berbulan. Pertanyaan pembeli "ini masih garansi?" hanya bisa dijawab
+    # dengan dasar kalau masanya dipisah per bagian pekerjaan.
+    _d("warranty.struktur_months", 120, "int", "garansi", "Garansi struktur (bulan)",
+       "Pondasi, sloof, kolom, balok, dan rangka utama.",
+       impact="Memperpendek masa ini menutup hak pembeli atas cacat struktur.",
+       sensitive=True, minimum=0, maximum=240, src="DOC"),
+    _d("warranty.atap_plafon_months", 12, "int", "garansi", "Garansi atap & plafon (bulan)",
+       "Kebocoran atap, rangka atap, dan plafon.", minimum=0, maximum=120, src="DOC"),
+    _d("warranty.dinding_lantai_months", 12, "int", "garansi",
+       "Garansi dinding & lantai (bulan)",
+       "Retak rambut, keramik pecah/popping, dan nat lantai.", minimum=0, maximum=120,
+       src="DOC"),
+    _d("warranty.plumbing_months", 6, "int", "garansi", "Garansi sanitasi & plumbing (bulan)",
+       "Instalasi air bersih, air kotor, dan perlengkapan sanitasi.", minimum=0, maximum=120,
+       src="DOC"),
+    _d("warranty.listrik_months", 6, "int", "garansi", "Garansi instalasi listrik (bulan)",
+       "Titik lampu, saklar, MCB, dan pengabelan.", minimum=0, maximum=120, src="DOC"),
+    _d("warranty.kusen_months", 6, "int", "garansi", "Garansi kusen, pintu & jendela (bulan)",
+       "Kusen, daun pintu/jendela, kunci, dan engsel.", minimum=0, maximum=120, src="DOC"),
+    _d("warranty.finishing_months", 3, "int", "garansi", "Garansi finishing (bulan)",
+       "Pengecatan, nat, dan aksesori.", minimum=0, maximum=60, src="DOC"),
+    _d("warranty.expiring_days", 30, "int", "garansi", "Ambang \u201champir habis\u201d (hari)",
+       "Sisa hari saat masa garansi mulai ditandai hampir habis di layar & portal pembeli.",
+       minimum=1, maximum=180),
+    _d("warranty.claim_sla_days", 7, "int", "garansi", "SLA menjawab klaim garansi (hari)",
+       "Batas waktu tim proyek memutuskan diterima atau ditolak.", minimum=1, maximum=60),
+    _d("warranty.fix_days", 7, "int", "garansi", "Target selesai perbaikan garansi (hari)",
+       "Tenggat bawaan pekerjaan perbaikan yang lahir dari klaim yang diterima.",
+       minimum=1, maximum=90),
 ]}
 
 GROUP_LABELS = {
@@ -315,6 +347,7 @@ GROUP_LABELS = {
     "konstruksi": "Konstruksi & Izin", "bank": "Rekonsiliasi Bank",
     "penawaran": "Penawaran & Diskon", "upah": "Upah Harian Tenaga Kerja",
     "pajak": "Pajak & Kepatuhan",
+    "garansi": "Serah Terima & Garansi",
     "tampilan": "Tampilan",
 }
 
