@@ -1,0 +1,50 @@
+[
+  {
+    "content": "Restore repo to /app, install deps, seed DB, services running",
+    "status": "completed"
+  },
+  {
+    "content": "Baseline verify: poc_49.py PASS + run_all_gates.sh (38 gates) OVERALL PASS",
+    "status": "in_progress"
+  },
+  {
+    "content": "Fase 49 sisa: seed AP bills Disetujui/Sebagian untuk jalur Potong PPh (US13)",
+    "status": "pending"
+  },
+  {
+    "content": "Fase 49 sisa: tombol Keluar (logout) di header + bersihkan sesi (US14 RBAC sales /tax)",
+    "status": "pending"
+  },
+  {
+    "content": "Fase 49 sisa: perbaiki overlay dialog bukti potong (US11) + audit tombol Batal semua dialog p49",
+    "status": "pending"
+  },
+  {
+    "content": "E2E ulang Fase 49 (US11/US13/US14 + regresi) via testing_agent_v3",
+    "status": "pending"
+  },
+  {
+    "content": "Fase 50A POC: BAST unit + garansi + klaim garansi (poc/poc_50.py)",
+    "status": "pending"
+  },
+  {
+    "content": "Fase 50A backend: handover engine, models, router, RBAC, seed",
+    "status": "pending"
+  },
+  {
+    "content": "Fase 50A UI: halaman/tab serah terima unit + garansi + klaim",
+    "status": "pending"
+  },
+  {
+    "content": "Fase 50B POC + implementasi PWA offline terpadu (absensi+progres+foto, satu antrean sinkron)",
+    "status": "pending"
+  },
+  {
+    "content": "Gate baru 39/40 + mutasi_50.py + docs + plan.md update",
+    "status": "pending"
+  },
+  {
+    "content": "E2E multi-peran Fase 50 via testing_agent_v3",
+    "status": "pending"
+  }
+]
